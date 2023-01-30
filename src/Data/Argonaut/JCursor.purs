@@ -53,7 +53,7 @@ newtype JsonPrim = JsonPrim
   ( forall a
      . (Unit -> a)
     -> (Boolean -> a)
-    -> (Number -> a)
+    -> (String -> a)
     -> (String -> a)
     -> a
   )
@@ -63,7 +63,7 @@ runJsonPrim
   -> ( forall a
         . (Unit -> a)
        -> (Boolean -> a)
-       -> (Number -> a)
+       -> (String -> a)
        -> (String -> a)
        -> a
      )
@@ -78,14 +78,14 @@ primNull = JsonPrim (\f _ _ _ -> f unit)
 primBool :: Boolean -> JsonPrim
 primBool v = JsonPrim (\_ f _ _ -> f v)
 
-primNum :: Number -> JsonPrim
+primNum :: String -> JsonPrim
 primNum v = JsonPrim (\_ _ f _ -> f v)
 
 primStr :: String -> JsonPrim
 primStr v = JsonPrim (\_ _ _ f -> f v)
 
 primToJson :: JsonPrim -> J.Json
-primToJson p = runJsonPrim p (const J.jsonNull) J.fromBoolean J.fromNumber J.fromString
+primToJson p = runJsonPrim p (const J.jsonNull) J.JBoolean J.JNumber J.JString
 
 insideOut :: JCursor -> JCursor
 insideOut JCursorTop = JCursorTop
@@ -159,7 +159,7 @@ toPrims = J.caseJson nullFn boolFn numFn strFn arrFn objFn
   boolFn :: Boolean -> List (Tuple JCursor JsonPrim)
   boolFn b = mkTop $ primBool b
 
-  numFn :: Number -> List (Tuple JCursor JsonPrim)
+  numFn :: String -> List (Tuple JCursor JsonPrim)
   numFn n = mkTop $ primNum n
 
   strFn :: String -> List (Tuple JCursor JsonPrim)
@@ -206,6 +206,6 @@ instance decodeJsonJCursor :: DecodeJson JCursor where
         fail = Left (Named "Int or String" $ UnexpectedValue x)
       J.caseJson (const fail) (const fail) (goNum c) (Right <<< flip JField c) (const fail) (const fail) x
 
-    goNum :: JCursor -> Number -> Either JsonDecodeError JCursor
+    goNum :: JCursor -> String -> Either JsonDecodeError JCursor
     goNum c =
-      maybe (Left $ TypeMismatch "Int") (Right <<< flip JIndex c) <<< I.fromNumber
+      maybe (Left $ TypeMismatch "Int") (Right <<< flip JIndex c) <<< I.fromString
